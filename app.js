@@ -14,9 +14,7 @@ app.use(cookieParser())
 app.get('/', (req, res) => {
     res.render('index')
 })
-app.get('/profile', isLoggedIn, (req, res) => {
-    res.render('index')
-})
+
 app.get('/login', (req, res) => {
     res.render('login')
 })
@@ -26,7 +24,7 @@ app.get('/logout', (req, res) => {
 })
 
 function isLoggedIn(req, res, next) {
-    if (req.cookies.token === "") res.send('you must be log in first!')
+    if (req.cookies.token === "") res.redirect('/login')
     else {
         let data = jwt.verify(req.cookies.token, 'shhhh')
         req.user = data
@@ -61,10 +59,56 @@ app.post('/login', async (req, res) => {
         if (result) {
             let token = jwt.sign({ email: email, userid: user._id }, 'shhhh')
             res.cookie('token', token)
-            res.status(200).send('you can login')
+            res.status(200).redirect('/profile')
         }
         else res.status(500).send('wrong password')
     })
 })
+
+app.get('/profile', isLoggedIn, async (req, res) => {
+    let user = await userModel.findOne({ email: req.user.email }).populate("posts")
+    res.render('profile', { user })
+})
+
+
+app.post('/post', isLoggedIn, async (req, res) => {
+    try {
+        // Extract content from request body
+        let { content } = req.body;
+
+        // Find the user by email
+        let user = await userModel.findOne({ email: req.user.email });
+
+        // Create a new post associated with the user
+        let newPost = await postModel.create({
+            user: user._id,
+            content
+        });
+
+        // Push the new post's ID into the user's posts array
+        user.posts.push(newPost._id);
+        await user.save();  // Save the updated user document
+
+        // Redirect to the profile page after the operations
+        res.redirect('/profile');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("An error occurred while creating the post.");
+    }
+});
+
+// app.post('/post', isLoggedIn, async (req, res) => {
+//     let { content } = req.body;
+//     let user = await userModel.findOne({ email: req.user.email })
+//     let data = await postModel.create({
+//         user: user._id,
+//         content
+//     });
+//     user.posts.push(post._id)
+//     await user.save();
+//     post.user.push(user._id)
+//     post.save();
+//     res.redirect('/profile')
+// })
 
 app.listen(3000)
