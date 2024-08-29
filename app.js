@@ -18,6 +18,7 @@ app.get('/', (req, res) => {
 app.get('/login', (req, res) => {
     res.render('login')
 })
+
 app.get('/logout', (req, res) => {
     res.cookie('token', '')
     res.redirect('/login')
@@ -51,6 +52,7 @@ app.post('/register', async (req, res) => {
         })
     })
 })
+
 app.post('/login', async (req, res) => {
     let { email, password } = req.body;
     let user = await userModel.findOne({ email: email })
@@ -70,45 +72,21 @@ app.get('/profile', isLoggedIn, async (req, res) => {
     res.render('profile', { user })
 })
 
-
 app.post('/post', isLoggedIn, async (req, res) => {
     try {
-        // Extract content from request body
         let { content } = req.body;
-
-        // Find the user by email
         let user = await userModel.findOne({ email: req.user.email });
-
-        // Create a new post associated with the user
         let newPost = await postModel.create({
             user: user._id,
             content
         });
-
-        // Push the new post's ID into the user's posts array
         user.posts.push(newPost._id);
-        await user.save();  // Save the updated user document
-
-        // Redirect to the profile page after the operations
+        await user.save(); 
         res.redirect('/profile');
     } catch (err) {
         console.error(err);
         res.status(500).send("An error occurred while creating the post.");
     }
 });
-
-// app.post('/post', isLoggedIn, async (req, res) => {
-//     let { content } = req.body;
-//     let user = await userModel.findOne({ email: req.user.email })
-//     let data = await postModel.create({
-//         user: user._id,
-//         content
-//     });
-//     user.posts.push(post._id)
-//     await user.save();
-//     post.user.push(user._id)
-//     post.save();
-//     res.redirect('/profile')
-// })
 
 app.listen(3000)
